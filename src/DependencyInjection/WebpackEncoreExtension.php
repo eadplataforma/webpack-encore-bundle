@@ -20,7 +20,6 @@ use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\WebLink\EventListener\AddLinkHeaderListener;
 use Symfony\WebpackEncoreBundle\Asset\EntrypointLookup;
 use Symfony\WebpackEncoreBundle\Asset\EntrypointLookupInterface;
-use Symfony\WebpackEncoreBundle\EventListener\ResetAssetsEventListener;
 
 final class WebpackEncoreExtension extends Extension
 {
@@ -38,7 +37,7 @@ final class WebpackEncoreExtension extends Extension
         $cacheKeys = [];
 
         if (false !== $config['output_path']) {
-            $factories['_default'] = $this->entrypointFactory($container, '_default', $config['output_path'], $config['cache'], $config['strict_mode']);
+            $factories['_default'] = $this->entrypointFactory($container, '_default', $config['output_path'], $config['cache'], $config['strict_mode'], $config['external_output_path']);
             $cacheKeys['_default'] = $config['output_path'].'/'.self::ENTRYPOINTS_FILE_NAME;
 
             $container->getDefinition('webpack_encore.entrypoint_lookup_collection')
@@ -46,7 +45,7 @@ final class WebpackEncoreExtension extends Extension
         }
 
         foreach ($config['builds'] as $name => $path) {
-            $factories[$name] = $this->entrypointFactory($container, $name, $path, $config['cache'], $config['strict_mode']);
+            $factories[$name] = $this->entrypointFactory($container, $name, $path, $config['cache'], $config['strict_mode'], $config['external_output_path']);
             $cacheKeys[rawurlencode($name)] = $path.'/'.self::ENTRYPOINTS_FILE_NAME;
         }
 
@@ -58,9 +57,6 @@ final class WebpackEncoreExtension extends Extension
 
         $container->getDefinition('webpack_encore.entrypoint_lookup_collection')
             ->replaceArgument(0, ServiceLocatorTagPass::register($container, $factories));
-
-        $container->getDefinition(ResetAssetsEventListener::class)
-            ->setArgument(1, array_keys($factories));
         if (false !== $config['output_path']) {
             $container->setAlias(EntrypointLookupInterface::class, new Alias($this->getEntrypointServiceId('_default')));
         }
@@ -85,7 +81,7 @@ final class WebpackEncoreExtension extends Extension
         }
     }
 
-    private function entrypointFactory(ContainerBuilder $container, string $name, string $path, bool $cacheEnabled, bool $strictMode): Reference
+    private function entrypointFactory(ContainerBuilder $container, string $name, string $path, bool $cacheEnabled, bool $strictMode, bool $allowCdnBuild): Reference
     {
         $id = $this->getEntrypointServiceId($name);
         $arguments = [
@@ -93,6 +89,7 @@ final class WebpackEncoreExtension extends Extension
             $cacheEnabled ? new Reference('webpack_encore.cache') : null,
             $name,
             $strictMode,
+            $allowCdnBuild
         ];
         $definition = new Definition(EntrypointLookup::class, $arguments);
         $definition->addTag('kernel.reset', ['method' => 'reset']);

@@ -33,12 +33,15 @@ class EntrypointLookup implements EntrypointLookupInterface, IntegrityDataProvid
 
     private $strictMode;
 
-    public function __construct(string $entrypointJsonPath, CacheItemPoolInterface $cache = null, string $cacheKey = null, bool $strictMode = true)
+    private $externalOutputPath;
+
+    public function __construct(string $entrypointJsonPath, CacheItemPoolInterface $cache = null, string $cacheKey = null, bool $strictMode = true, bool $externalOutputPath = false)
     {
         $this->entrypointJsonPath = $entrypointJsonPath;
         $this->cache = $cache;
         $this->cacheKey = $cacheKey;
         $this->strictMode = $strictMode;
+        $this->externalOutputPath = $externalOutputPath;
     }
 
     public function getJavaScriptFiles(string $entryName): array
@@ -117,11 +120,13 @@ class EntrypointLookup implements EntrypointLookupInterface, IntegrityDataProvid
             }
         }
 
-        if (!file_exists($this->entrypointJsonPath)) {
-            if (!$this->strictMode) {
-                return [];
+        if(!$this->externalOutputPath){
+            if (!file_exists($this->entrypointJsonPath)) {
+                if (!$this->strictMode) {
+                    return [];
+                }
+                throw new \InvalidArgumentException(sprintf('Could not find the entrypoints file from Webpack: the file "%s" does not exist.', $this->entrypointJsonPath));
             }
-            throw new \InvalidArgumentException(sprintf('Could not find the entrypoints file from Webpack: the file "%s" does not exist.', $this->entrypointJsonPath));
         }
 
         $this->entriesData = json_decode(file_get_contents($this->entrypointJsonPath), true);
@@ -139,12 +144,5 @@ class EntrypointLookup implements EntrypointLookupInterface, IntegrityDataProvid
         }
 
         return $this->entriesData;
-    }
-
-    public function entryExists(string $entryName): bool
-    {
-        $entriesData = $this->getEntriesData();
-
-        return isset($entriesData['entrypoints'][$entryName]);
     }
 }
