@@ -20,7 +20,7 @@ class ResetAssetsEventListener implements EventSubscriberInterface
     private $entrypointLookupCollection;
     private $buildNames;
 
-    public function __construct(EntrypointLookupCollection $entrypointLookupCollection, array $buildNames)
+    public function __construct(EntrypointLookupCollection $entrypointLookupCollection, ?array $buildNames = [])
     {
         $this->entrypointLookupCollection = $entrypointLookupCollection;
         $this->buildNames = $buildNames;
